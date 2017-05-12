@@ -14,7 +14,8 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
+#include "stm32f0xx.h"
+#include "gpio.h"
 
 
 //--- Private typedef ---//

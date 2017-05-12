@@ -14,10 +14,10 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
+#include "stm32f0xx.h"
+#include "gpio.h"
 #include "stm32f0xx_adc.h"
 #include "stdio.h"
-//#include "string.h"
 #include "adc.h"
 #include "core_cm0.h"
 #include "hard.h"
@@ -54,15 +54,11 @@ volatile unsigned short pwm_current_min = 0;
 #endif
 
 //--- FUNCIONES DEL MODULO ---//
-unsigned short ADC_Conf (void);
-unsigned short ReadADC1 (unsigned int);
-unsigned short ReadADC1_SameSampleTime (unsigned int);
-void SetADC1_SampleTime (void);
-
-
 unsigned char Door_Open (void);
 unsigned short Get_Temp (void);
 unsigned short Get_Pote (void);
+void TimingDelay_Decrement(void);
+
 
 //--- FILTROS DE SENSORES ---//
 #define LARGO_FILTRO_POTE 16
@@ -121,6 +117,7 @@ const unsigned char vpwm_ranges [] = {0, 71, 77, 88, 93, 104, 110};	//ajuste pun
 //------------------------------------------//
 int main(void)
 {
+	unsigned char i = 0;
 #ifdef SIMPLE_VECTOR_TEMP
 	enum Parts Temp_Range, Pote_Range;
 #endif
@@ -165,21 +162,26 @@ int main(void)
 	//Timer_4_Init();
 
 	//UART configuration.
-	//USART_Config();
+	//USART_Config()
 
 	//ACTIVAR SYSTICK TIMER
-	 if (SysTick_Config(48000))
-	 {
-		 while (1)	/* Capture error */
-		 {
-			 if (LED)
-				 LED_ON;
-			 else
-				 LED_OFF;
+	if (SysTick_Config(48000))
+	{
+		while (1)	/* Capture error */
+		{
+			if (LED)
+				LED_ON;
+			else
+				LED_OFF;
 
-			 Wait_ms(300);
-		 }
-	 }
+			for (i = 0; i < 255; i++)
+   		{
+   			asm (	"nop \n\t"
+   					"nop \n\t"
+   					"nop \n\t" );
+   		}
+		}
+	}
 	//SENSAR TEMPERATURA 	((OK))
 	//ENVIAR ONE WIRE		((OK))
 
@@ -198,24 +200,13 @@ int main(void)
 	 //FIN PRUEBA DE SYSTICK
 
 	//ADC configuration.
-	if (ADC_Conf() == 0)
-	{
-		while (1)
-		{
-			if (LED)
-				LED_ON;
-			else
-				LED_OFF;
-
-			Wait_ms(150);
-		}
-	}
+	AdcConfig();
 
 	TIM16Enable ();
 
 	LED_ON;
-    Wait_ms(1000);
-    LED_OFF;
+   Wait_ms(1000);
+   LED_OFF;
 
 //    //para pruebas
 //    Wait_ms(9000);
@@ -697,110 +688,6 @@ int main(void)
 	return 0;
 }
 //--- End of file ---//
-
-unsigned short ADC_Conf (void)
-{
-	unsigned short cal = 0;
-	ADC_InitTypeDef ADC_InitStructure;
-
-	if (!RCC_ADC_CLK)
-		RCC_ADC_CLK_ON;
-
-	ADC_ClockModeConfig(ADC1, ADC_ClockMode_SynClkDiv4);
-
-	// preseteo de registros a default
-	  /* ADCs DeInit */
-	  ADC_DeInit(ADC1);
-
-	  /* Initialize ADC structure */
-	  ADC_StructInit(&ADC_InitStructure);
-
-	  /* Configure the ADC1 in continuous mode with a resolution equal to 12 bits  */
-	  ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
-	  ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
-	  ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
-	  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
-	  ADC_InitStructure.ADC_ScanDirection = ADC_ScanDirection_Upward;
-	  ADC_Init(ADC1, &ADC_InitStructure);
-
-	//software by setting bit ADCAL=1.
-	//Calibration can only be initiated when the ADC is disabled (when ADEN=0).
-	//ADCAL bit stays at 1 during all the calibration sequence.
-	//It is then cleared by hardware as soon the calibration completes
-	cal = ADC_GetCalibrationFactor(ADC1);
-
-	// Enable ADC1
-	ADC_Cmd(ADC1, ENABLE);
-
-	SetADC1_SampleTime ();
-
-	return cal;
-}
-
-unsigned short ReadADC1 (unsigned int channel)
-{
-	uint32_t tmpreg = 0;
-	//GPIOA_PIN4_ON;
-	// Set channel and sample time
-	//ADC_ChannelConfig(ADC1, channel, ADC_SampleTime_7_5Cycles);	//pifia la medicion 2800 o 3400 en ves de 4095
-	//ADC_ChannelConfig(ADC1, channel, ADC_SampleTime_239_5Cycles);
-	//ADC_ChannelConfig(ADC1, ADC_Channel_0, ADC_SampleTime_239_5Cycles);
-
-	//ADC_ChannelConfig INTERNALS
-	/* Configure the ADC Channel */
-	ADC1->CHSELR = channel;
-
-	/* Clear the Sampling time Selection bits */
-	tmpreg &= ~ADC_SMPR1_SMPR;
-
-	/* Set the ADC Sampling Time register */
-	tmpreg |= (uint32_t)ADC_SampleTime_239_5Cycles;
-
-	/* Configure the ADC Sample time register */
-	ADC1->SMPR = tmpreg ;
-
-
-	// Start the conversion
-	ADC_StartOfConversion(ADC1);
-	// Wait until conversion completion
-	while(ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
-	// Get the conversion value
-	//GPIOA_PIN4_OFF;	//tarda 20us en convertir
-	return ADC_GetConversionValue(ADC1);
-}
-
-//Setea el sample time en el ADC
-void SetADC1_SampleTime (void)
-{
-	uint32_t tmpreg = 0;
-
-	/* Clear the Sampling time Selection bits */
-	tmpreg &= ~ADC_SMPR1_SMPR;
-
-	/* Set the ADC Sampling Time register */
-	tmpreg |= (uint32_t)ADC_SampleTime_239_5Cycles;
-
-	/* Configure the ADC Sample time register */
-	ADC1->SMPR = tmpreg ;
-}
-
-
-//lee el ADC sin cambiar el sample time anterior
-unsigned short ReadADC1_SameSampleTime (unsigned int channel)
-{
-	// Configure the ADC Channel
-	ADC1->CHSELR = channel;
-
-	// Start the conversion
-	ADC1->CR |= (uint32_t)ADC_CR_ADSTART;
-
-	// Wait until conversion completion
-	while((ADC1->ISR & ADC_ISR_EOC) == 0);
-
-	// Get the conversion value
-	return (uint16_t) ADC1->DR;
-}
-
 
 unsigned short Get_Temp (void)
 {

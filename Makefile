@@ -90,12 +90,12 @@ SRC += $(STMSPSRCDDIR)/stm32f0xx_adc.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_dma.c
 # SRC += $(STMSPSRCDDIR)/stm32f0xx_exti.c
 # SRC += $(STMSPSRCDDIR)/stm32f0xx_flash.c
-SRC += $(STMSPSRCDDIR)/stm32f0xx_gpio.c
+#SRC += $(STMSPSRCDDIR)/stm32f0xx_gpio.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_i2c.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_iwdg.c
-SRC += $(STMSPSRCDDIR)/stm32f0xx_misc.c
+#SRC += $(STMSPSRCDDIR)/stm32f0xx_misc.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_pwr.c
-SRC += $(STMSPSRCDDIR)/stm32f0xx_rcc.c
+#SRC += $(STMSPSRCDDIR)/stm32f0xx_rcc.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_rtc.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_spi.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_syscfg.c
@@ -103,9 +103,10 @@ SRC += $(STMSPSRCDDIR)/stm32f0xx_rcc.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_usart.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_wwdg.c
 SRC += ./src/stm32f0xx_it.c
-SRC += ./src/stm32f0x_gpio.c
+SRC += ./src/gpio.c
 SRC += ./src/tim.c
 SRC += ./src/hard.c
+SRC += ./src/adc.c
 ## System Support
 #SRC += ./cmsis_boot/system_stm32f0xx.c
 #SRC += $(DISCOVERY)/stm32f0_discovery.c
@@ -216,14 +217,15 @@ flash:
 	#sudo openocd -f stm32f0discovery.cfg
 
 clean:
-	rm $(OBJS)
-	rm $(FULL_PRJ).elf
-	rm $(FULL_PRJ).map
-	rm $(FULL_PRJ).hex
-	rm $(FULL_PRJ).bin
+	rm -f ./src/*.lst
+	rm -f $(OBJS)
+	rm -f $(FULL_PRJ).elf
+	rm -f $(FULL_PRJ).map
+#	rm $(FULL_PRJ).hex
+	rm -f $(FULL_PRJ).bin
 #	rm $(SRC:.c=.c.bak)
-	rm $(SRC:.c=.lst)
+#	rm $(SRC:.c=.lst)
 #   rm $(ASRC:.s=.s.bak)
-	rm $(ASRC:.s=.lst)
+#	rm $(ASRC:.s=.lst)
 
 # *** EOF ***
