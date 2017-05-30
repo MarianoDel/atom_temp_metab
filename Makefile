@@ -79,7 +79,7 @@ SRC  = ./src/main.c
 SRC += $(DEVDIR)/system_stm32f0xx.c
 SRC += $(DEVDIR)/syscalls/syscalls.c
 ## Libs de ST V1.3 o V1.5
-SRC += $(STMSPSRCDDIR)/stm32f0xx_adc.c
+#SRC += $(STMSPSRCDDIR)/stm32f0xx_adc.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_can.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_cec.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_comp.c
@@ -213,8 +213,14 @@ $(assobjects): %.o: %.s
 	$(BIN)  $< $@
 
 flash:
-	sudo openocd -f stm32f0discovery.cfg -c $(OCDCMN)
-	#sudo openocd -f stm32f0discovery.cfg
+	sudo openocd -f stm32f0_flash.cfg
+
+gdb:
+	sudo openocd -f stm32f0_gdb.cfg
+
+reset:
+	sudo openocd -f stm32f0_reset.cfg
+
 
 clean:
 	rm -f ./src/*.lst
