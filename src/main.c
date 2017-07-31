@@ -155,7 +155,7 @@ int main(void)
 	GPIO_Config();
 
 	//TIM Configuration.
-	TIM_3_Init();
+//	TIM_3_Init();
 	TIM_16_Init();
 	//Timer_2_Init();
 	//Timer_3_Init();
@@ -165,7 +165,12 @@ int main(void)
 	//USART_Config()
 
 	//ACTIVAR SYSTICK TIMER
+#ifdef CLOCK_FREQ_48_MHZ
 	if (SysTick_Config(48000))
+#endif
+#ifdef CLOCK_FREQ_8_MHZ
+	if (SysTick_Config(8000))
+#endif
 	{
 		while (1)	/* Capture error */
 		{

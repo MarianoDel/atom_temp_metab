@@ -268,9 +268,14 @@ void TIM_16_Init (void)
 	TIM16->CR1 = 0x00;		//clk int / 1; upcounting; uev
 	TIM16->ARR = 0xFFFF;
 	TIM16->CNT = 0;
+#ifdef CLOCK_FREQ_48_MHZ
 	//TIM16->PSC = 7999;	//tick 1ms
 	//TIM16->PSC = 799;	//tick 100us
 	TIM16->PSC = 47;			//tick 1us
+#endif
+#ifdef CLOCK_FREQ_8_MHZ
+	TIM16->PSC = 7;			//tick 1us
+#endif
 	TIM16->EGR = TIM_EGR_UG;
 
 	// Enable timer ver UDIS
@@ -334,5 +339,3 @@ void TIM_17_Init (void)
 }
 
 //--- end of file ---//
-
-

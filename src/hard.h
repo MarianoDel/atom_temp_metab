@@ -27,6 +27,10 @@
 //#define SETPOINT_PLUS_HYST
 #define OPEN_LOOP
 
+//-------- Clock Frequency ------------------------------------
+// #define CLOCK_FREQ_48_MHZ
+#define CLOCK_FREQ_8_MHZ
+
 
 //-------- Hardware resources for Type of Program ----------------
 #ifdef DOBLE_VECTOR_TEMP
