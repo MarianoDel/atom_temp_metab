@@ -13,18 +13,20 @@
 //--- Board Configuration ---------------------------------------//
 //----------- Defines For Configuration -------------
 //----------- Hardware Board Version -------------
-//#define VER_1_0
-#define VER_2_0
+//#define HARD_1_0
+#define HARD_2_0
+
+//----------- Software Version -------------
+//#define SOFT_2_0			//coincide con Hard 2.0
+#define SOFT_2_1				//nuevo ajuste puntas y programa 13-10-17
 
 //-------- Type of Program ----------------
-#define RELAY_OFF_WITH_DOOR_OPEN		//apaga el relay de temp cuando se abre la puerta
+//#define RELAY_OFF_WITH_DOOR_OPEN		//apaga el relay de temp cuando se abre la puerta
 										//tambien apaga el led indicador
-//#define RELAY_ALWAYS_ON		//apaga el relay solo por temperatura
+#define RELAY_ALWAYS_ON		//apaga el relay solo por temperatura
 
 //-------- Type of Temparature determination ----------------
-//#define DOBLE_VECTOR_TEMP
 //#define SIMPLE_VECTOR_TEMP
-//#define SETPOINT_PLUS_HYST
 #define OPEN_LOOP
 
 //-------- Clock Frequency ------------------------------------
@@ -32,10 +34,18 @@
 #define CLOCK_FREQ_8_MHZ
 
 
-//-------- Hardware resources for Type of Program ----------------
-#ifdef DOBLE_VECTOR_TEMP
-#define USE_DMX
+//-------- Hardware and Soft resources for Type of Program ----------------
+#ifdef SOFT_2_1
+#define LARGO_FILTRO_POTE 16
+#define DIVISOR_POTE      4  		//2 elevado al divisor = largo filtro
+#define UPDATE_FILTRO_POTE 10		//total de 160ms
+
+#define LARGO_FILTRO_TEMP 32
+#define DIVISOR_TEMP      5   //2 elevado al divisor = largo filtro
+//#define UPDATE_FILTRO_TEMP 312		//total de 10 segundos
+#define UPDATE_FILTRO_TEMP 32		//total de 1 segundos
 #endif
+
 
 #ifdef SIMPLE_VECTOR_TEMP
 #define USE_SUBSCRIBE
@@ -77,7 +87,7 @@
 //GPIOA pin6
 //GPIOA pin7
 
-#ifdef VER_2_0
+#ifdef HARD_2_0
 #define SYNC		((GPIOA->ODR & 0x0080) != 0)
 #define SYNC_ON		GPIOA->BSRR = 0x00000080
 #define SYNC_OFF	GPIOA->BSRR = 0x00800000
@@ -128,12 +138,35 @@ enum Relay_State {
 
 };
 
+typedef enum Parts {
+
+	ZERO_BIPS = 0,
+	ONE_BIP,	//1
+	TWO_BIPS,	//2
+	THREE_BIPS,	//3
+	FOUR_BIPS,	//4
+	FIVE_BIPS,	//5
+	SIX_BIPS	//6
+} pote_range_t;
+
+//TEMPERATURAS DE UN NTC TT103 COLOCADO EN EL INTERIOR DE LA HELADERA
+//AL LADO DEL TAPON SOBRE EL FONDO
+#define TEMP_12 		1063		//0.856
+#define TEMP_10 		1118		//0.9V en NTC interno heladera
+#define TEMP_08 		1209		//0.975
+#define TEMP_06 		1311		//1.05	medidos posta
+#define TEMP_04 		1389		//1.12	calculado
+#define TEMP_02 		1489		//1.2		calculado
+
+
 /* Module Functions ------------------------------------------------------------*/
 void RelayOn (void);
 void RelayOff (void);
 void UpdateRelay (void);
 unsigned char RelayIsOn (void);
 unsigned char RelayIsOff (void);
+void ResetLed (void);
+void UpdateLed (unsigned char);
 
 
 #endif /* HARD_H_ */

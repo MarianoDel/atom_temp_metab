@@ -22,6 +22,7 @@
 #include "core_cm0.h"
 #include "hard.h"
 #include "tim.h"
+#include "dsp.h"
 
 
 #ifdef SETPOINT_PLUS_HYST
@@ -36,17 +37,21 @@ volatile unsigned char buffrx_ready = 0;
 volatile unsigned char *pbuffrx;
 volatile unsigned short timer_relay = 0;
 volatile unsigned short wait_ms_var;
-
+volatile unsigned short led_timer = 0;
 
 //--- VARIABLES GLOBALES ---//
 volatile unsigned char door_filter;
-volatile unsigned char take_sample_pote;
-volatile unsigned char take_sample_temp;
 volatile unsigned char move_relay;
+
+volatile unsigned short take_sample_pote_timer;
+volatile unsigned short take_sample_temp_timer;
+unsigned char pote_filter_ready = 0;
+unsigned char temp_filter_ready = 0;
+
 
 volatile unsigned char secs = 0;
 volatile unsigned short minutes = 0;
-volatile unsigned short led_timer = 0;
+
 
 #ifdef OPEN_LOOP
 volatile unsigned short pwm_total_min = 0;
@@ -58,27 +63,30 @@ unsigned char Door_Open (void);
 unsigned short Get_Temp (void);
 unsigned short Get_Pote (void);
 void TimingDelay_Decrement(void);
+void UpdatePote (void);
+void UpdateTemp (void);
+unsigned char GetPoteRange (unsigned short);
+unsigned short AjustePuntas (unsigned short);
 
 
 //--- FILTROS DE SENSORES ---//
+#ifdef SOFT_2_0
 #define LARGO_FILTRO_POTE 16
 #define DIVISOR_POTE      4   //2 elevado al divisor = largo filtro
 #define LARGO_FILTRO_TEMP 32
 #define DIVISOR_TEMP      5   //2 elevado al divisor = largo filtro
 unsigned short vtemp [LARGO_FILTRO_TEMP + 1];
 unsigned short vpote [LARGO_FILTRO_POTE + 1];
+#endif
+
+#ifdef SOFT_2_1
+unsigned char index_pote = 0;
+unsigned char index_temp = 0;
+unsigned short vtemp [LARGO_FILTRO_TEMP];
+unsigned short vpote [LARGO_FILTRO_POTE];
+#endif
 
 //--- FIN DEFINICIONES DE FILTRO ---//
-enum Parts {
-
-	NEVER_DEGREES = 0,
-	TWELVE_DEGREES,	//1
-	NINE_DEGREES,	//2
-	SIX_DEGREES,	//3
-	THREE_DEGREES,	//4
-	ZERO_DEGREES,	//5
-	CONT_DEGREES	//6
-};
 									 // MAX		<0	<3		<6	<9		<12		NUNCA
 //const unsigned short vpote_ranges [] = {3584, 3072, 2560, 2048, 1536, 1024, 512, 0};
 //const unsigned short vtemp_ranges [] = {3584, 3072, 2560, 2048, 1536, 1024, 512, 0};
@@ -90,17 +98,6 @@ const unsigned short vpote_ranges [] = {3510, 2925, 2340, 1755, 1170, 585, 0};
 const unsigned short vtemp_ranges [] = {796, 769, 742, 715, 688, 661, 495};	//ajuste puntas 10-3-15 (mediciones 3-3-15)
 #endif
 
-#ifdef DOBLE_VECTOR_TEMP
-const unsigned short vtemp_ranges_encendido [] = {865, 839, 804, 779, 762, 736, 693};	//ajuste puntas 14-5-15 (mediciones 14-5-15)
-const unsigned short vtemp_ranges_apagado [] = {880, 816, 750, 687, 623, 559, 495};	//ajuste puntas 14-5-15 (mediciones 14-5-15)
-#endif
-
-#ifdef SETPOINT_PLUS_HYST
-//TEMPERATURAS EN CALIENTE
-//(heladera funcionando)			   NUNCA  12   9    6    3    0    MAX
-const unsigned short vtemp_ranges [] = {495, 627, 646, 665, 687, 708, 796};	//ajuste puntas 23-5-15 (mediciones 22-5-15)
-
-#endif
 
 #ifdef OPEN_LOOP
 #define PWM_MIN_MAX		110
@@ -122,25 +119,19 @@ int main(void)
 	enum Parts Temp_Range, Pote_Range;
 #endif
 
-#ifdef DOBLE_VECTOR_TEMP
-	enum Parts Temp_Range, Pote_Range;
-#endif
-
-#ifdef SETPOINT_PLUS_HYST
-	enum Parts Pote_Range;
-//	unsigned char last_action = 0;		//last_action esta implicita en el codigo, no haciendo resolviendo pegar o despegar en el medio
-#endif
-
 #ifdef OPEN_LOOP
 	enum Parts Pote_Range;
 //	unsigned char last_action = 0;		//last_action esta implicita en el codigo, no haciendo resolviendo pegar o despegar en el medio
 #endif
-
+	unsigned short new_sample;
 	unsigned short temp_filtered = 0;
 	unsigned short pote_filtered = 0;
 	unsigned char stop_state = 0;
+	#ifdef SOFT_2_0
 	unsigned char led_state = 0;
 	unsigned char blink = 0;
+	#endif
+
 //	unsigned char relay_was_on = 0;
 #ifdef RELAY_OFF_WITH_DOOR_OPEN
 	unsigned char door_is_open = 0;
@@ -156,7 +147,7 @@ int main(void)
 
 	//TIM Configuration.
 //	TIM_3_Init();
-	TIM_16_Init();
+	TIM_16_Init();			//lo uso en HARD_2_0 para el sync de relay
 	//Timer_2_Init();
 	//Timer_3_Init();
 	//Timer_4_Init();
@@ -228,7 +219,7 @@ int main(void)
 //    	}
 //    }
 //    //para pruebas
-#ifdef VER_2_0
+#ifdef HARD_2_0
     //3 segundos muestro sincro
     timer_relay = 3000;
     while (timer_relay)
@@ -257,6 +248,171 @@ int main(void)
     LED_OFF;
 #endif
 
+	//--- New Main loop ---//
+#ifdef SOFT_2_1
+	new_sample = ReadADC1_SameSampleTime (CH_IN_POTE);
+	for (i = 0; i < LARGO_FILTRO_POTE; i++)
+		vpote[i] = new_sample;
+
+	pote_filtered = MA16 (vpote);
+	Pote_Range = GetPoteRange (pote_filtered);
+
+	new_sample = ReadADC1_SameSampleTime (CH_IN_TEMP);
+	for (i = 0; i < LARGO_FILTRO_TEMP; i++)
+		vtemp[i] = new_sample;
+
+	temp_filtered = MA32 (vtemp);
+	stop_state = NORMAL;
+
+	while (1)
+	{
+		//PROGRAMA DE PRODUCCION
+		if (pote_filter_ready)
+		{
+			pote_filter_ready = 0;
+			pote_filtered = MA16 (vpote);
+			Pote_Range = GetPoteRange (pote_filtered);
+		}
+
+		switch (stop_state)
+		{
+			case NORMAL:		//se toman muestras de temp y se prende o apaga el relay
+				if (temp_filter_ready)
+				{
+					temp_filter_ready = 0;
+					temp_filtered = MA32 (vtemp);
+
+					//Ajustar Temperaturas
+					temp_filtered = AjustePuntas (temp_filtered);
+
+					//Mover relay en funcion de posicion del Pote
+					switch (Pote_Range)
+					{
+						case ZERO_BIPS:
+							RelayOff();
+							break;
+
+						case ONE_BIP:
+							if (temp_filtered > TEMP_10)	//mide al reves menos temp mas tension
+								RelayOff();
+
+							if (temp_filtered < TEMP_12)
+								RelayOn();
+
+							break;
+
+						case TWO_BIPS:
+							if (temp_filtered > TEMP_08)	//mide al reves menos temp mas tension
+								RelayOff();
+
+							if (temp_filtered < TEMP_10)
+								RelayOn();
+
+							break;
+
+						case THREE_BIPS:
+							if (temp_filtered > TEMP_06)	//mide al reves menos temp mas tension
+								RelayOff();
+
+							if (temp_filtered < TEMP_08)
+								RelayOn();
+
+							break;
+
+						case FOUR_BIPS:
+							if (temp_filtered > TEMP_04)	//mide al reves menos temp mas tension
+								RelayOff();
+
+							if (temp_filtered < TEMP_06)
+								RelayOn();
+
+							break;
+
+						case FIVE_BIPS:
+							if (temp_filtered > TEMP_02)	//mide al reves menos temp mas tension
+								RelayOff();
+
+							if (temp_filtered < TEMP_04)
+								RelayOn();
+
+							break;
+
+						case SIX_BIPS:
+							RelayOn();
+							break;
+					}
+				}
+
+				if (minutes >= TT_MINUTES_DAY_ON)
+					stop_state = GO_TO_STOP;
+
+				break;
+
+			case GO_TO_STOP:
+				//tengo que apagar el rele durante 25 minutos
+				minutes = 0;
+				RelayOff();
+				stop_state = STOPPED;
+				LED_ON;
+				break;
+
+			case STOPPED:
+				if (minutes >= TT_MINUTES_DAY_OFF)
+				{
+					stop_state = NORMAL;
+					minutes = 0;
+				}
+				break;
+		}
+
+		//Cuestiones generales que no tienen que ver con el modo de stop
+#ifdef RELAY_ALWAYS_ON
+		if (stop_state == NORMAL)
+			UpdateLed((unsigned char) Pote_Range);
+
+		if (Door_Open())
+			LIGHT_ON;
+		else
+			LIGHT_OFF;
+
+
+#elif defined RELAY_OFF_WITH_DOOR_OPEN
+
+		if (Door_Open())
+		{
+			RelayOff();
+			LED_OFF;
+			door_is_open = 1;
+			LIGHT_ON;
+		}
+		else
+		{
+			if (door_is_open)
+				ResetLed();
+
+			LIGHT_OFF;
+			door_is_open = 0;
+		}
+
+		if ((stop_state == NORMAL) && (!door_is_open))		//si a puerta no esta abierta muevo LED
+			UpdateLed((unsigned char) Pote_Range);
+
+#else
+#error "Falta elegir Type of Program hard.h"
+#endif
+
+		//Cuestiones generales a todos los programas
+		UpdatePote();
+		UpdateTemp();
+
+#ifdef HARD_2_0
+		UpdateRelay();
+#endif
+	}	//End of while 1
+#endif		//SOFT_2_1
+
+	//--- End of New Main loop ---//
+
 //    while (1)
 //    {
 //    	if (SYNC)
@@ -268,98 +424,55 @@ int main(void)
 //    }
 
 	//--- Main loop ---//
+#ifdef SOFT_2_0
 	while(1)
 	{
 		//PROGRAMA DE PRODUCCION
-		if (!take_sample_pote)	//tomo muestras cada 10ms
+		if (!take_sample_pote_timer)	//tomo muestras cada 10ms
 		{
-			take_sample_pote = 10;
+			take_sample_pote_timer = 10;
 			pote_filtered = Get_Pote();
 
 			//determino los rangos del pote
 			if (pote_filtered > vpote_ranges[0])
-				Pote_Range = CONT_DEGREES;
+				Pote_Range = SIX_BIPS;
 			else if (pote_filtered > vpote_ranges[1])
-				Pote_Range = ZERO_DEGREES;
+				Pote_Range = FIVE_BIPS;
 			else if (pote_filtered > vpote_ranges[2])
-				Pote_Range = THREE_DEGREES;
+				Pote_Range = FOUR_BIPS;
 			else if (pote_filtered > vpote_ranges[3])
-				Pote_Range = SIX_DEGREES;
+				Pote_Range = THREE_BIPS;
 			else if (pote_filtered > vpote_ranges[4])
-				Pote_Range = NINE_DEGREES;
+				Pote_Range = TWO_BIPS;
 			else if (pote_filtered > vpote_ranges[5])
-				Pote_Range = TWELVE_DEGREES;
+				Pote_Range = ONE_BIP;
 			else
-				Pote_Range = NEVER_DEGREES;
+				Pote_Range = ZERO_BIPS;
 		}
 
-		if (!take_sample_temp)	//tomo muestras cada 100ms
+		if (!take_sample_temp_timer)	//tomo muestras cada 100ms
 		{
-#ifdef SETPOINT_PLUS_HYST
-			take_sample_temp = 100;
-#else
-			take_sample_temp = 10;
-#endif
+			take_sample_temp_timer = 10;
 			temp_filtered = Get_Temp();
 
 #ifdef SIMPLE_VECTOR_TEMP
 			//determino los rangos de temperatura
 			if (temp_filtered > vtemp_ranges[0])		//1337
-				Temp_Range = CONT_DEGREES;
+				Temp_Range = SIX_BIPS;
 			else if (temp_filtered > vtemp_ranges[1])	//713
-				Temp_Range = ZERO_DEGREES;
+				Temp_Range = FIVE_BIPS;
 			else if (temp_filtered > vtemp_ranges[2])	//685
-				Temp_Range = THREE_DEGREES;
+				Temp_Range = FOUR_BIPS;
 			else if (temp_filtered > vtemp_ranges[3])	//657
-				Temp_Range = SIX_DEGREES;
+				Temp_Range = THREE_BIPS;
 			else if (temp_filtered > vtemp_ranges[4])	//628
-				Temp_Range = NINE_DEGREES;
+				Temp_Range = TWO_BIPS;
 			else if (temp_filtered > vtemp_ranges[5])	//600
-				Temp_Range = TWELVE_DEGREES;
+				Temp_Range = ONE_BIP;
 			else
-				Temp_Range = NEVER_DEGREES;				//572
+				Temp_Range = ZERO_BIPS;				//572
 #endif
 
-#ifdef DOBLE_VECTOR_TEMP
-			//determino los rangos de temperatura
-			if (RELAY)	//EQUIPO ENCENDIDO
-			{
-				if (temp_filtered > vtemp_ranges_encendido[0])		//1337
-					Temp_Range = CONT_DEGREES;
-				else if (temp_filtered > vtemp_ranges_encendido[1])	//713
-					Temp_Range = ZERO_DEGREES;
-				else if (temp_filtered > vtemp_ranges_encendido[2])	//685
-					Temp_Range = THREE_DEGREES;
-				else if (temp_filtered > vtemp_ranges_encendido[3])	//657
-					Temp_Range = SIX_DEGREES;
-				else if (temp_filtered > vtemp_ranges_encendido[4])	//628
-					Temp_Range = NINE_DEGREES;
-				else if (temp_filtered > vtemp_ranges_encendido[5])	//600
-					Temp_Range = TWELVE_DEGREES;
-				else
-					Temp_Range = NEVER_DEGREES;				//572
-			}
-			else	//EQUIPO APAGADO, ES OTRA MEDICION
-			{
-				if (temp_filtered > vtemp_ranges_apagado[0])		//1337
-					Temp_Range = CONT_DEGREES;
-				else if (temp_filtered > vtemp_ranges_apagado[1])	//713
-					Temp_Range = ZERO_DEGREES;
-				else if (temp_filtered > vtemp_ranges_apagado[2])	//685
-					Temp_Range = THREE_DEGREES;
-				else if (temp_filtered > vtemp_ranges_apagado[3])	//657
-					Temp_Range = SIX_DEGREES;
-				else if (temp_filtered > vtemp_ranges_apagado[4])	//628
-					Temp_Range = NINE_DEGREES;
-				else if (temp_filtered > vtemp_ranges_apagado[5])	//600
-					Temp_Range = TWELVE_DEGREES;
-				else
-					Temp_Range = NEVER_DEGREES;				//572
-			}
-
-
-
-#endif
 
 		}
 
@@ -404,85 +517,22 @@ int main(void)
 						if (Temp_Range >= Pote_Range)
 							RELAY_OFF;
 
-						if (Pote_Range > NEVER_DEGREES)
+						if (Pote_Range > ZERO_BIPS)
 						{
 							if (Temp_Range < (Pote_Range - 1))
 								RELAY_ON;
 						}
 	#endif
 
-	#ifdef DOBLE_VECTOR_TEMP
-						//Modificacion 14-5-15 tego dos vectores, cuando esta encendido y cuando no
-						if (Temp_Range >= Pote_Range)
-							RELAY_OFF;
-
-						if (Pote_Range > NEVER_DEGREES)
-						{
-							if (Temp_Range < (Pote_Range - 1))
-								RELAY_ON;
-						}
-	#endif
-
-	#ifdef SETPOINT_PLUS_HYST
-						//Modificacion 23-5-15 pongo setpoint + hysteresis
-						switch (Pote_Range)
-						{
-							case CONT_DEGREES:		//lo resuelvo en otra parte
-								break;
-
-							case ZERO_DEGREES:
-								if (temp_filtered > (vtemp_ranges[ZERO_DEGREES] + HYST))
-									RELAY_OFF;
-								else if (temp_filtered < (vtemp_ranges[ZERO_DEGREES] - HYST))
-									RELAY_ON;
-
-								break;
-
-							case THREE_DEGREES:
-								if (temp_filtered > (vtemp_ranges[THREE_DEGREES] + HYST))
-									RELAY_OFF;
-								else if (temp_filtered < (vtemp_ranges[THREE_DEGREES] - HYST))
-									RELAY_ON;
-
-								break;
-
-							case SIX_DEGREES:
-								if (temp_filtered > (vtemp_ranges[SIX_DEGREES] + HYST))
-									RELAY_OFF;
-								else if (temp_filtered < (vtemp_ranges[SIX_DEGREES] - HYST))
-									RELAY_ON;
-
-								break;
-
-							case NINE_DEGREES:
-								if (temp_filtered > (vtemp_ranges[NINE_DEGREES] + HYST))
-									RELAY_OFF;
-								else if (temp_filtered < (vtemp_ranges[NINE_DEGREES] - HYST))
-									RELAY_ON;
-
-								break;
-
-							case TWELVE_DEGREES:
-								if (temp_filtered > (vtemp_ranges[TWELVE_DEGREES] + HYST))
-									RELAY_OFF;
-								else if (temp_filtered < (vtemp_ranges[TWELVE_DEGREES] - HYST))
-									RELAY_ON;
-
-								break;
-
-							case NEVER_DEGREES:		//lo resuelvo en otra parte
-								break;
-						}
-	#endif
 	#ifdef OPEN_LOOP
 						//Modificacion 23-5-15 pongo setpoint + hysteresis
 						switch (Pote_Range)
 						{
-							case CONT_DEGREES:		//lo resuelvo en otra parte
+							case SIX_BIPS:		//lo resuelvo en otra parte
 								break;
 
-							case ZERO_DEGREES:
-								if (pwm_current_min < vpwm_ranges[ZERO_DEGREES])
+							case FIVE_BIPS:
+								if (pwm_current_min < vpwm_ranges[FIVE_BIPS])
 									RelayOn();
 								else
 									RelayOff();
@@ -493,8 +543,8 @@ int main(void)
 								}
 								break;
 
-							case THREE_DEGREES:
-								if (pwm_current_min < vpwm_ranges[THREE_DEGREES])
+							case FOUR_BIPS:
+								if (pwm_current_min < vpwm_ranges[FOUR_BIPS])
 									RelayOn();
 								else
 									RelayOff();
@@ -505,8 +555,8 @@ int main(void)
 								}
 								break;
 
-							case SIX_DEGREES:
-								if (pwm_current_min < vpwm_ranges[SIX_DEGREES])
+							case THREE_BIPS:
+								if (pwm_current_min < vpwm_ranges[THREE_BIPS])
 									RelayOn();
 								else
 									RelayOff();
@@ -517,8 +567,8 @@ int main(void)
 								}
 								break;
 
-							case NINE_DEGREES:
-								if (pwm_current_min < vpwm_ranges[NINE_DEGREES])
+							case TWO_BIPS:
+								if (pwm_current_min < vpwm_ranges[TWO_BIPS])
 									RelayOn();
 								else
 									RelayOff();
@@ -529,8 +579,8 @@ int main(void)
 								}
 								break;
 
-							case TWELVE_DEGREES:
-								if (pwm_current_min < vpwm_ranges[TWELVE_DEGREES])
+							case ONE_BIP:
+								if (pwm_current_min < vpwm_ranges[ONE_BIP])
 									RelayOn();
 								else
 									RelayOff();
@@ -541,7 +591,7 @@ int main(void)
 								}
 								break;
 
-							case NEVER_DEGREES:		//lo resuelvo en otra parte
+							case ZERO_BIPS:		//lo resuelvo en otra parte
 								break;
 						}
 	#endif //OPEN_LOOP
@@ -551,11 +601,11 @@ int main(void)
 						stop_state = GO_TO_STOP;
 
 					//si se apago la heladera
-					if (Pote_Range == NEVER_DEGREES)
+					if (Pote_Range == ZERO_BIPS)
 						stop_state = TO_NEVER;
 
 					//si se prende siempre
-					if (Pote_Range == CONT_DEGREES)
+					if (Pote_Range == SIX_BIPS)
 						stop_state = TO_ALWAYS;
 
 					break;
@@ -587,7 +637,7 @@ int main(void)
 //					if (RELAY)
 //						RelayOff();
 
-					if (Pote_Range != NEVER_DEGREES)
+					if (Pote_Range != ZERO_BIPS)
 					{
 						minutes = 0;
 						stop_state = NORMAL;
@@ -601,7 +651,7 @@ int main(void)
 					break;
 
 				case ALWAYS:
-					if (Pote_Range != CONT_DEGREES)
+					if (Pote_Range != SIX_BIPS)
 					{
 						stop_state = NORMAL;
 					}
@@ -685,11 +735,12 @@ int main(void)
 		}
 #endif
 		//Cuestiones generales
-#ifdef VER_2_0
+#ifdef HARD_2_0
 		UpdateRelay();
 #endif
 
 	}	//End of while (1)
+#endif	//SOFT_2_0
 	return 0;
 }
 //--- End of file ---//
@@ -740,6 +791,85 @@ unsigned char Door_Open (void)
 		return 0;
 }
 
+void UpdatePote (void)
+{
+	unsigned short new_sample;
+
+	if (!take_sample_pote_timer)	//tomo muestras cada UPDATE_FILTRO_POTE
+	{
+		take_sample_pote_timer = UPDATE_FILTRO_POTE;
+		new_sample = ReadADC1_SameSampleTime (CH_IN_POTE);
+
+		if (index_pote < LARGO_FILTRO_POTE)
+		{
+			vpote[index_pote] = new_sample;
+			index_pote++;
+		}
+		else
+		{
+			vpote[0] = new_sample;
+			index_pote = 1;
+			pote_filter_ready = 1;
+		}
+	}
+}
+
+void UpdateTemp (void)
+{
+	unsigned short new_sample;
+
+	if (!take_sample_temp_timer)	//tomo muestras cada UPDATE_FILTRO_TEMP
+	{
+		take_sample_temp_timer = UPDATE_FILTRO_TEMP;
+		new_sample = ReadADC1_SameSampleTime (CH_IN_TEMP);
+
+		if (index_temp < LARGO_FILTRO_TEMP)
+		{
+			vtemp[index_temp] = new_sample;
+			index_temp++;
+		}
+		else
+		{
+			vtemp[0] = new_sample;
+			index_temp = 1;
+			temp_filter_ready = 1;
+		}
+	}
+}
+
+unsigned char GetPoteRange (unsigned short filtered_sample)
+{
+	pote_range_t pote;
+
+	//determino los rangos del pote
+	if (filtered_sample > vpote_ranges[0])
+		pote = SIX_BIPS;
+	else if (filtered_sample > vpote_ranges[1])
+		pote = FIVE_BIPS;
+	else if (filtered_sample > vpote_ranges[2])
+		pote = FOUR_BIPS;
+	else if (filtered_sample > vpote_ranges[3])
+		pote = THREE_BIPS;
+	else if (filtered_sample > vpote_ranges[4])
+		pote = TWO_BIPS;
+	else if (filtered_sample > vpote_ranges[5])
+		pote = ONE_BIP;
+	else
+		pote = ZERO_BIPS;
+
+	return (unsigned char) pote;
+}
+
+unsigned short AjustePuntas (unsigned short t_filtered)
+{
+	float aux = 1.0;
+	aux = t_filtered * 2.99 - 893.0;
+	return (unsigned short) aux;
+	//ntc_ext = ntc_ext * 2.99 - 893.0	#contra eje x int eje y ext	PYTHON
+}
+
+
+
 /**
   * @brief  Decrements the TimingDelay variable.	ESTA ES LA QUE LLAMA SYSTICK CADA 1MSEG
   * @param  None
@@ -762,12 +892,12 @@ void TimingDelay_Decrement(void)
 		door_filter--;
 
 	//indice para el filtro del pote
-	if (take_sample_pote)
-		take_sample_pote--;
+	if (take_sample_pote_timer)
+		take_sample_pote_timer--;
 
 	//indice para el filtro de la temp
-	if (take_sample_temp)
-		take_sample_temp--;
+	if (take_sample_temp_timer)
+		take_sample_temp_timer--;
 
 	if (relay_dumb)		//entro cada 1 segundo
 		relay_dumb--;
