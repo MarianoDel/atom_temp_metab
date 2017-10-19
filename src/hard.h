@@ -20,12 +20,23 @@
 //#define SOFT_2_0			//coincide con Hard 2.0
 #define SOFT_2_1				//nuevo ajuste puntas y programa 13-10-17
 
-//-------- Type of Program ----------------
-//#define RELAY_OFF_WITH_DOOR_OPEN		//apaga el relay de temp cuando se abre la puerta
+//-------- Type of Program o Heladera ----------------
+#define TB600			//MOdelo de Heladera grande
+//#define MINIBAR		//Modelo de Heladera chica
+
+#ifdef TB600
+#define RELAY_OFF_WITH_DOOR_OPEN		//apaga el relay de temp cuando se abre la puerta
 										//tambien apaga el led indicador
+#endif
+
+#ifdef MINIBAR
 #define RELAY_ALWAYS_ON		//apaga el relay solo por temperatura
+#endif
 
 //-------- Type of Temparature determination ----------------
+#ifdef SOFT_2_1
+// #define TEMP_BY_PWM
+#endif
 //#define SIMPLE_VECTOR_TEMP
 #define OPEN_LOOP
 
@@ -151,13 +162,52 @@ typedef enum Parts {
 
 //TEMPERATURAS DE UN NTC TT103 COLOCADO EN EL INTERIOR DE LA HELADERA
 //AL LADO DEL TAPON SOBRE EL FONDO
-#define TEMP_12 		1063		//0.856
-#define TEMP_10 		1118		//0.9V en NTC interno heladera
-#define TEMP_08 		1209		//0.975
-#define TEMP_06 		1311		//1.05	medidos posta
-#define TEMP_04 		1389		//1.12	calculado
+#ifdef MINIBAR
+#define TEMP_12 		1135		//0.856
+#define TEMP_10 		1241		//0.9V en NTC interno heladera
+#define TEMP_08 		1330		//0.975
+#define TEMP_06 		1380		//1.05	medidos posta
+#define TEMP_04 		1430		//1.12	calculado
 #define TEMP_02 		1489		//1.2		calculado
+#endif
 
+#ifdef TB600
+#define TEMP_12 		515
+#define TEMP_10 		538
+#define TEMP_08 		563
+#define TEMP_06 		580
+#define TEMP_04 		603
+#define TEMP_02 		626
+
+#define TEMP_12_SIN_MOTOR		583		//calculado
+#define TEMP_10_SIN_MOTOR		606		//medido
+#define TEMP_08_SIN_MOTOR		631		//calculado
+#define TEMP_06_SIN_MOTOR		656		//calculado
+#define TEMP_04_SIN_MOTOR		681		//calculado
+#define TEMP_02_SIN_MOTOR		706		//calculado
+
+//para modo PWM en TB600
+#define PWM_1BIP_ON				44
+#define PWM_1BIP_OFF				55			//99
+#define PWM_1BIP_PERIOD			(PWM_1BIP_ON + PWM_1BIP_OFF)
+
+#define PWM_2BIPS_ON				53
+#define PWM_2BIPS_OFF			36			//99
+#define PWM_2BIPS_PERIOD		(PWM_2BIPS_ON + PWM_2BIPS_OFF)
+
+#define PWM_3BIPS_ON				65
+#define PWM_3BIPS_OFF			39			//104
+#define PWM_3BIPS_PERIOD		(PWM_3BIPS_ON + PWM_3BIPS_OFF)
+
+#define PWM_4BIPS_ON				80
+#define PWM_4BIPS_OFF			36			//116
+#define PWM_4BIPS_PERIOD		(PWM_4BIPS_ON + PWM_4BIPS_OFF)
+
+#define PWM_5BIPS_ON				95
+#define PWM_5BIPS_OFF			36			//131
+#define PWM_5BIPS_PERIOD		(PWM_5BIPS_ON + PWM_5BIPS_OFF)
+
+#endif
 
 /* Module Functions ------------------------------------------------------------*/
 void RelayOn (void);

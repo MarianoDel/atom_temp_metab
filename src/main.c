@@ -51,6 +51,7 @@ unsigned char temp_filter_ready = 0;
 
 volatile unsigned char secs = 0;
 volatile unsigned short minutes = 0;
+volatile unsigned char bips_minutes_timeout = 0;
 
 
 #ifdef OPEN_LOOP
@@ -107,6 +108,9 @@ const unsigned char vpwm_ranges [] = {0, 71, 77, 88, 93, 104, 110};	//ajuste pun
 
 #endif
 
+#define B_INIT			0
+#define B_CALENTANDO			1
+#define B_ENFRIANDO			2
 //-------------------------------------------//
 // @brief  Main program.
 // @param  None
@@ -127,6 +131,11 @@ int main(void)
 	unsigned short temp_filtered = 0;
 	unsigned short pote_filtered = 0;
 	unsigned char stop_state = 0;
+	unsigned char bips_in_state = 0;
+	unsigned char relay_was_on = 0;
+#ifndef TEMP_BY_PWM
+	unsigned char last_pote_range = 0;
+#endif
 	#ifdef SOFT_2_0
 	unsigned char led_state = 0;
 	unsigned char blink = 0;
@@ -282,8 +291,18 @@ int main(void)
 					temp_filter_ready = 0;
 					temp_filtered = MA32 (vtemp);
 
+#ifdef			MINIBAR
 					//Ajustar Temperaturas
 					temp_filtered = AjustePuntas (temp_filtered);
+#endif
+
+#ifndef TEMP_BY_PWM
+					if (Pote_Range != last_pote_range)
+					{
+						last_pote_range = Pote_Range;
+						bips_in_state = B_INIT;
+					}
+#endif
 
 					//Mover relay en funcion de posicion del Pote
 					switch (Pote_Range)
@@ -293,48 +312,303 @@ int main(void)
 							break;
 
 						case ONE_BIP:
-							if (temp_filtered > TEMP_10)	//mide al reves menos temp mas tension
+#ifdef TEMP_BY_PWM
+							if (pwm_current_min < PWM_1BIP_ON)
+								RelayOn();
+							else
 								RelayOff();
 
-							if (temp_filtered < TEMP_12)
-								RelayOn();
+							if (pwm_current_min >= PWM_1BIP_PERIOD)
+								pwm_current_min = 0;
+#else
+							switch (bips_in_state)
+							{
+								case B_INIT:
+									if (temp_filtered > TEMP_10_SIN_MOTOR)	//mide al reves menos temp mas tension
+									{
+										RelayOff();
+										bips_in_state = B_CALENTANDO;
+										bips_minutes_timeout = PWM_1BIP_OFF;
+									}
 
+									if (temp_filtered < TEMP_12_SIN_MOTOR)
+									{
+										RelayOn();
+										bips_in_state = B_ENFRIANDO;
+										bips_minutes_timeout = PWM_1BIP_ON;
+									}
+									break;
+
+								case B_CALENTANDO:
+									if (!bips_minutes_timeout)
+									{
+										if (temp_filtered < TEMP_12_SIN_MOTOR)
+										{
+											RelayOn();
+											bips_in_state = B_ENFRIANDO;
+											bips_minutes_timeout = PWM_1BIP_ON;
+										}
+										break;
+									}
+									break;
+
+								case B_ENFRIANDO:
+									if (!bips_minutes_timeout)
+									{
+										if (temp_filtered > TEMP_10)	//mide al reves menos temp mas tension
+										{
+											RelayOff();
+											bips_in_state = B_CALENTANDO;
+											bips_minutes_timeout = PWM_1BIP_OFF;
+										}
+									}
+									break;
+
+								default:
+									bips_in_state = B_INIT;
+									break;
+							}
+#endif
 							break;
 
 						case TWO_BIPS:
-							if (temp_filtered > TEMP_08)	//mide al reves menos temp mas tension
+#ifdef TEMP_BY_PWM
+							if (pwm_current_min < PWM_2BIPS_ON)
+								RelayOn();
+							else
 								RelayOff();
 
-							if (temp_filtered < TEMP_10)
-								RelayOn();
+							if (pwm_current_min >= PWM_2BIPS_PERIOD)
+								pwm_current_min = 0;
+#else
+							switch (bips_in_state)
+							{
+								case B_INIT:
+									if (temp_filtered > TEMP_08_SIN_MOTOR)	//mide al reves menos temp mas tension
+									{
+										RelayOff();
+										bips_in_state = B_CALENTANDO;
+										bips_minutes_timeout = PWM_2BIPS_OFF;
+									}
 
+									if (temp_filtered < TEMP_10_SIN_MOTOR)
+									{
+										RelayOn();
+										bips_in_state = B_ENFRIANDO;
+										bips_minutes_timeout = PWM_2BIPS_ON;
+									}
+									break;
+
+								case B_CALENTANDO:
+									if (!bips_minutes_timeout)
+									{
+										if (temp_filtered < TEMP_10_SIN_MOTOR)
+										{
+											RelayOn();
+											bips_in_state = B_ENFRIANDO;
+											bips_minutes_timeout = PWM_2BIPS_ON;
+										}
+										break;
+									}
+									break;
+
+								case B_ENFRIANDO:
+									if (!bips_minutes_timeout)
+									{
+										if (temp_filtered > TEMP_08)	//mide al reves menos temp mas tension
+										{
+											RelayOff();
+											bips_in_state = B_CALENTANDO;
+											bips_minutes_timeout = PWM_2BIPS_OFF;
+										}
+									}
+									break;
+
+								default:
+									bips_in_state = B_INIT;
+									break;
+							}
+#endif
 							break;
 
 						case THREE_BIPS:
-							if (temp_filtered > TEMP_06)	//mide al reves menos temp mas tension
+#ifdef TEMP_BY_PWM
+							if (pwm_current_min < PWM_3BIPS_ON)
+								RelayOn();
+							else
 								RelayOff();
 
-							if (temp_filtered < TEMP_08)
-								RelayOn();
+							if (pwm_current_min >= PWM_3BIPS_PERIOD)
+								pwm_current_min = 0;
+#else
+							switch (bips_in_state)
+							{
+								case B_INIT:
+									if (temp_filtered > TEMP_06_SIN_MOTOR)	//mide al reves menos temp mas tension
+									{
+										RelayOff();
+										bips_in_state = B_CALENTANDO;
+										bips_minutes_timeout = PWM_3BIPS_OFF;
+									}
 
+									if (temp_filtered < TEMP_08_SIN_MOTOR)
+									{
+										RelayOn();
+										bips_in_state = B_ENFRIANDO;
+										bips_minutes_timeout = PWM_3BIPS_ON;
+									}
+									break;
+
+								case B_CALENTANDO:
+									if (!bips_minutes_timeout)
+									{
+										if (temp_filtered < TEMP_08_SIN_MOTOR)
+										{
+											RelayOn();
+											bips_in_state = B_ENFRIANDO;
+											bips_minutes_timeout = PWM_3BIPS_ON;
+										}
+										break;
+									}
+									break;
+
+								case B_ENFRIANDO:
+									if (!bips_minutes_timeout)
+									{
+										if (temp_filtered > TEMP_06)	//mide al reves menos temp mas tension
+										{
+											RelayOff();
+											bips_in_state = B_CALENTANDO;
+											bips_minutes_timeout = PWM_3BIPS_OFF;
+										}
+									}
+									break;
+
+								default:
+									bips_in_state = B_INIT;
+									break;
+							}
+#endif
 							break;
 
 						case FOUR_BIPS:
-							if (temp_filtered > TEMP_04)	//mide al reves menos temp mas tension
+#ifdef TEMP_BY_PWM
+							if (pwm_current_min < PWM_4BIPS_ON)
+								RelayOn();
+							else
 								RelayOff();
 
-							if (temp_filtered < TEMP_06)
-								RelayOn();
+							if (pwm_current_min >= PWM_4BIPS_PERIOD)
+								pwm_current_min = 0;
+#else
+							switch (bips_in_state)
+							{
+								case B_INIT:
+									if (temp_filtered > TEMP_04_SIN_MOTOR)	//mide al reves menos temp mas tension
+									{
+										RelayOff();
+										bips_in_state = B_CALENTANDO;
+										bips_minutes_timeout = PWM_4BIPS_OFF;
+									}
 
+									if (temp_filtered < TEMP_06_SIN_MOTOR)
+									{
+										RelayOn();
+										bips_in_state = B_ENFRIANDO;
+										bips_minutes_timeout = PWM_4BIPS_ON;
+									}
+									break;
+
+								case B_CALENTANDO:
+									if (!bips_minutes_timeout)
+									{
+										if (temp_filtered < TEMP_06_SIN_MOTOR)
+										{
+											RelayOn();
+											bips_in_state = B_ENFRIANDO;
+											bips_minutes_timeout = PWM_4BIPS_ON;
+										}
+										break;
+									}
+									break;
+
+								case B_ENFRIANDO:
+									if (!bips_minutes_timeout)
+									{
+										if (temp_filtered > TEMP_04)	//mide al reves menos temp mas tension
+										{
+											RelayOff();
+											bips_in_state = B_CALENTANDO;
+											bips_minutes_timeout = PWM_4BIPS_OFF;
+										}
+									}
+									break;
+
+								default:
+									bips_in_state = B_INIT;
+									break;
+							}
+#endif
 							break;
 
 						case FIVE_BIPS:
-							if (temp_filtered > TEMP_02)	//mide al reves menos temp mas tension
+#ifdef TEMP_BY_PWM
+							if (pwm_current_min < PWM_5BIPS_ON)
+								RelayOn();
+							else
 								RelayOff();
 
-							if (temp_filtered < TEMP_04)
-								RelayOn();
+							if (pwm_current_min >= PWM_5BIPS_PERIOD)
+								pwm_current_min = 0;
+#else
+							switch (bips_in_state)
+							{
+								case B_INIT:
+									if (temp_filtered > TEMP_02_SIN_MOTOR)	//mide al reves menos temp mas tension
+									{
+										RelayOff();
+										bips_in_state = B_CALENTANDO;
+										bips_minutes_timeout = PWM_5BIPS_OFF;
+									}
 
+									if (temp_filtered < TEMP_04_SIN_MOTOR)
+									{
+										RelayOn();
+										bips_in_state = B_ENFRIANDO;
+										bips_minutes_timeout = PWM_5BIPS_ON;
+									}
+									break;
+
+								case B_CALENTANDO:
+									if (!bips_minutes_timeout)
+									{
+										if (temp_filtered < TEMP_04_SIN_MOTOR)
+										{
+											RelayOn();
+											bips_in_state = B_ENFRIANDO;
+											bips_minutes_timeout = PWM_5BIPS_ON;
+										}
+										break;
+									}
+									break;
+
+								case B_ENFRIANDO:
+									if (!bips_minutes_timeout)
+									{
+										if (temp_filtered > TEMP_02)	//mide al reves menos temp mas tension
+										{
+											RelayOff();
+											bips_in_state = B_CALENTANDO;
+											bips_minutes_timeout = PWM_5BIPS_OFF;
+										}
+									}
+									break;
+
+								default:
+									bips_in_state = B_INIT;
+									break;
+							}
+#endif
 							break;
 
 						case SIX_BIPS:
@@ -380,7 +654,12 @@ int main(void)
 
 		if (Door_Open())
 		{
-			RelayOff();
+			if (RelayIsOn())
+			{
+				RelayOff();
+				relay_was_on = 1;
+			}
+
 			LED_OFF;
 			door_is_open = 1;
 			LIGHT_ON;
@@ -390,6 +669,11 @@ int main(void)
 			if (door_is_open)
 				ResetLed();
 
+			if (relay_was_on)
+			{
+				relay_was_on = 0;
+				RelayOn();
+			}
 			LIGHT_OFF;
 			door_is_open = 0;
 		}
@@ -913,9 +1197,10 @@ void TimingDelay_Decrement(void)
 		{
 			secs = 0;
 			minutes++;
-#ifdef OPEN_LOOP
 			pwm_current_min++;		//contador de minutos
-#endif
+
+			if (bips_minutes_timeout)
+				bips_minutes_timeout--;
 		}
 	}
 

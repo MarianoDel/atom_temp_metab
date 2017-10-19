@@ -10,3 +10,4 @@ rdm_responder.*
 transceiver.*
 #rdm_util.*	##la gregue al proyecto 30-03-2016
 .tags
+*.zip
