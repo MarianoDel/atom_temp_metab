@@ -35,7 +35,10 @@
 
 //-------- Type of Temparature determination ----------------
 #ifdef SOFT_2_1
-// #define TEMP_BY_PWM
+#define TEMP_BY_NTC_INTERNO							//se coloca un NTC metab dentro de la heladera
+// #define TEMP_BY_PWM							//solo pwm
+// #define TEMP_BY_WAIT_AND_SENSE			//mide, actua espera y vuelve a medir
+// #define TEMP_BY_SENSE_AND_PWM					//mide solo al pricipio luego pwm
 #endif
 //#define SIMPLE_VECTOR_TEMP
 #define OPEN_LOOP
@@ -186,25 +189,33 @@ typedef enum Parts {
 #define TEMP_04_SIN_MOTOR		681		//calculado
 #define TEMP_02_SIN_MOTOR		706		//calculado
 
+#define TEMP_12_NTC_INTERNO	931
+#define TEMP_10_NTC_INTERNO	1017
+#define TEMP_08_NTC_INTERNO	1095
+#define TEMP_06_NTC_INTERNO	1210
+#define TEMP_04_NTC_INTERNO	1325
+#define TEMP_02_NTC_INTERNO	1440
+
 //para modo PWM en TB600
-#define PWM_1BIP_ON				44
-#define PWM_1BIP_OFF				55			//99
+#define PWM_STARTING				35
+#define PWM_1BIP_ON				47
+#define PWM_1BIP_OFF				35
 #define PWM_1BIP_PERIOD			(PWM_1BIP_ON + PWM_1BIP_OFF)
 
-#define PWM_2BIPS_ON				53
-#define PWM_2BIPS_OFF			36			//99
+#define PWM_2BIPS_ON				100
+#define PWM_2BIPS_OFF			35
 #define PWM_2BIPS_PERIOD		(PWM_2BIPS_ON + PWM_2BIPS_OFF)
 
-#define PWM_3BIPS_ON				65
-#define PWM_3BIPS_OFF			39			//104
+#define PWM_3BIPS_ON				206
+#define PWM_3BIPS_OFF			20
 #define PWM_3BIPS_PERIOD		(PWM_3BIPS_ON + PWM_3BIPS_OFF)
 
-#define PWM_4BIPS_ON				80
-#define PWM_4BIPS_OFF			36			//116
+#define PWM_4BIPS_ON				260
+#define PWM_4BIPS_OFF			20
 #define PWM_4BIPS_PERIOD		(PWM_4BIPS_ON + PWM_4BIPS_OFF)
 
-#define PWM_5BIPS_ON				95
-#define PWM_5BIPS_OFF			36			//131
+#define PWM_5BIPS_ON				300
+#define PWM_5BIPS_OFF			20
 #define PWM_5BIPS_PERIOD		(PWM_5BIPS_ON + PWM_5BIPS_OFF)
 
 #endif
