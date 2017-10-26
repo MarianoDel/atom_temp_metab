@@ -26,7 +26,7 @@
 
 #ifdef TB600
 #define RELAY_OFF_WITH_DOOR_OPEN		//apaga el relay de temp cuando se abre la puerta
-										//tambien apaga el led indicador
+												//tambien apaga el led indicador
 #endif
 
 #ifdef MINIBAR
@@ -35,9 +35,9 @@
 
 //-------- Type of Temparature determination ----------------
 #ifdef SOFT_2_1
-#define TEMP_BY_NTC_INTERNO							//se coloca un NTC metab dentro de la heladera
+// #define TEMP_BY_NTC_INTERNO							//se coloca un NTC metab dentro de la heladera
 // #define TEMP_BY_PWM							//solo pwm
-// #define TEMP_BY_WAIT_AND_SENSE			//mide, actua espera y vuelve a medir
+#define TEMP_BY_PWM_AND_SENSE				//ejecuta ciclos basicos de pwm y luego mide, corta por default en 3*pwm
 // #define TEMP_BY_SENSE_AND_PWM					//mide solo al pricipio luego pwm
 #endif
 //#define SIMPLE_VECTOR_TEMP
@@ -198,12 +198,12 @@ typedef enum Parts {
 
 //para modo PWM en TB600
 #define PWM_STARTING				35
-#define PWM_1BIP_ON				47
-#define PWM_1BIP_OFF				35
+#define PWM_1BIP_ON				80
+#define PWM_1BIP_OFF				30
 #define PWM_1BIP_PERIOD			(PWM_1BIP_ON + PWM_1BIP_OFF)
 
-#define PWM_2BIPS_ON				100
-#define PWM_2BIPS_OFF			35
+#define PWM_2BIPS_ON				110
+#define PWM_2BIPS_OFF			30
 #define PWM_2BIPS_PERIOD		(PWM_2BIPS_ON + PWM_2BIPS_OFF)
 
 #define PWM_3BIPS_ON				206
