@@ -38,10 +38,7 @@
 // #define TEMP_BY_NTC_INTERNO							//se coloca un NTC metab dentro de la heladera
 // #define TEMP_BY_PWM							//solo pwm
 #define TEMP_BY_PWM_AND_SENSE				//ejecuta ciclos basicos de pwm y luego mide, corta por default en 3*pwm
-// #define TEMP_BY_SENSE_AND_PWM					//mide solo al pricipio luego pwm
 #endif
-//#define SIMPLE_VECTOR_TEMP
-#define OPEN_LOOP
 
 //-------- Clock Frequency ------------------------------------
 // #define CLOCK_FREQ_48_MHZ
@@ -58,19 +55,6 @@
 #define DIVISOR_TEMP      5   //2 elevado al divisor = largo filtro
 //#define UPDATE_FILTRO_TEMP 312		//total de 10 segundos
 #define UPDATE_FILTRO_TEMP 32		//total de 1 segundos
-#endif
-
-
-#ifdef SIMPLE_VECTOR_TEMP
-#define USE_SUBSCRIBE
-#endif
-
-#ifdef SETPOINT_PLUS_HYST
-#define USE_DMX
-#endif
-
-#ifdef OPEN_LOOP
-//#define USE_DMX
 #endif
 
 
@@ -197,13 +181,14 @@ typedef enum Parts {
 #define TEMP_02_NTC_INTERNO	1440
 
 //para modo PWM en TB600
-#define PWM_STARTING				35
-#define PWM_1BIP_ON				80
-#define PWM_1BIP_OFF				30
+#define PWM_STARTING				45
+#define PWM_1BIP_ON				70
+// #define PWM_1BIP_ON				10
+#define PWM_1BIP_OFF				24
 #define PWM_1BIP_PERIOD			(PWM_1BIP_ON + PWM_1BIP_OFF)
 
-#define PWM_2BIPS_ON				110
-#define PWM_2BIPS_OFF			30
+#define PWM_2BIPS_ON				100
+#define PWM_2BIPS_OFF			22
 #define PWM_2BIPS_PERIOD		(PWM_2BIPS_ON + PWM_2BIPS_OFF)
 
 #define PWM_3BIPS_ON				206
