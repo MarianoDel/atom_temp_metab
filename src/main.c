@@ -23,6 +23,7 @@
 #include "hard.h"
 #include "tim.h"
 #include "dsp.h"
+#include "uart.h"
 
 
 #ifdef SETPOINT_PLUS_HYST
@@ -52,6 +53,9 @@ unsigned char temp_filter_ready = 0;
 volatile unsigned char secs = 0;
 volatile unsigned short minutes = 0;
 volatile unsigned short bips_minutes_timeout = 0;
+#ifdef DATALOGGER
+volatile unsigned short timer_for_debug = 0;
+#endif
 
 
 #ifdef TEMP_BY_PWM
@@ -86,6 +90,7 @@ unsigned char index_temp = 0;
 unsigned short vtemp [LARGO_FILTRO_TEMP];
 unsigned short vpote [LARGO_FILTRO_POTE];
 #endif
+
 
 //--- FIN DEFINICIONES DE FILTRO ---//
 									 // MAX		<0	<3		<6	<9		<12		NUNCA
@@ -134,6 +139,11 @@ int main(void)
 	unsigned char led_state = 0;
 	unsigned char blink = 0;
 	#endif
+
+#ifdef DATALOGGER
+	char s_to_send [100];
+	unsigned short ts_cal1, ts_cal2;
+#endif
 
 //	unsigned char relay_was_on = 0;
 #ifdef RELAY_OFF_WITH_DOOR_OPEN
@@ -206,6 +216,15 @@ int main(void)
 	LED_ON;
    Wait_ms(1000);
    LED_OFF;
+
+#ifdef DATALOGGER
+	USART1Config();
+	//Activo sensor de temp lo hago en el config de ADC
+	//calibracion de fabrica del sensor
+	ts_cal1 = *((uint16_t*)0x1FFFF7B8);
+	ts_cal2 = *((uint16_t*)0x1FFFF7C2);
+
+#endif
 
 //    //para pruebas
 //    Wait_ms(9000);
@@ -692,6 +711,19 @@ int main(void)
 
 #ifdef HARD_2_0
 		UpdateRelay();
+#endif
+#ifdef DATALOGGER
+		if (!timer_for_debug)
+		{
+			timer_for_debug = 10000;
+			new_sample = ReadADC1_SameSampleTime (CH_IN_INTERNAL_TEMP);
+			if (RelayIsOn())
+				sprintf(s_to_send, "%04d,%04d,1,\r\n",temp_filtered,new_sample);
+			else
+				sprintf(s_to_send, "%04d,%04d,0,\r\n",temp_filtered,new_sample);
+
+			Usart1Send(s_to_send);
+		}
 #endif
 	}	//End of while 1
 #endif		//SOFT_2_1
@@ -1214,4 +1246,9 @@ void TimingDelay_Decrement(void)
 
 	if (led_timer)
 		led_timer--;
+
+#ifdef DATALOGGER
+	if (timer_for_debug)
+		timer_for_debug--;
+#endif
 }

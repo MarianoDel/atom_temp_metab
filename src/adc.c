@@ -50,6 +50,9 @@ void AdcConfig (void)
 	ADC1->TR = 0x0FFF0000;
 	ADC1->CHSELR = 0x00000000;
 
+	//sensor de temp
+	ADC->CCR |= (uint32_t)ADC_CCR_TSEN;
+
 	//set clock
 	ADC1->CFGR2 = ADC_ClockMode_SynClkDiv4;
 

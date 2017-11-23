@@ -24,6 +24,8 @@
 #define TB600			//MOdelo de Heladera grande
 //#define MINIBAR		//Modelo de Heladera chica
 
+#define DATALOGGER	//si quiero enviar datos por el puerto serie
+
 #ifdef TB600
 #define RELAY_OFF_WITH_DOOR_OPEN		//apaga el relay de temp cuando se abre la puerta
 												//tambien apaga el led indicador
@@ -98,6 +100,7 @@
 
 #define CH_IN_POTE ADC_Channel_5
 #define CH_IN_TEMP ADC_Channel_0
+#define CH_IN_INTERNAL_TEMP ADC_Channel_16
 
 #define DOOR_ROOF	200
 #define DOOR_THRESH	180
