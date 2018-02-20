@@ -13,16 +13,16 @@
 //--- Board Configuration ---------------------------------------//
 //----------- Defines For Configuration -------------
 //----------- Hardware Board Version -------------
-//#define HARD_1_0
+// #define HARD_1_0
 #define HARD_2_0
 
 //----------- Software Version -------------
-//#define SOFT_2_0			//coincide con Hard 2.0
+// #define SOFT_2_0			//DEPRECATED!!!!
 #define SOFT_2_1				//nuevo ajuste puntas y programa 13-10-17
 
 //-------- Type of Program o Heladera ----------------
-#define TB600			//MOdelo de Heladera grande
-//#define MINIBAR		//Modelo de Heladera chica
+// #define TB600			//MOdelo de Heladera grande
+#define MINIBAR		//Modelo de Heladera chica
 
 #define DATALOGGER	//si quiero enviar datos por el puerto serie
 
@@ -36,10 +36,16 @@
 #endif
 
 //-------- Type of Temparature determination ----------------
-#ifdef SOFT_2_1
+#ifdef MINIBAR
+#define TEMP_BY_PWM							//solo pwm
+// #define TEMP_BY_PWM_AND_SENSE				//ejecuta ciclos basicos de pwm y luego mide, corta por default en 3*pwm
+// #define TEMP_BY_NTC_INTERNO			//se coloca un NTC metab dentro de la heladera
+#endif
+
+#ifdef TB600
+#define TEMP_BY_PWM_AND_SENSE				//ejecuta ciclos basicos de pwm y luego mide, corta por default en 3*pwm
 // #define TEMP_BY_NTC_INTERNO							//se coloca un NTC metab dentro de la heladera
 // #define TEMP_BY_PWM							//solo pwm
-#define TEMP_BY_PWM_AND_SENSE				//ejecuta ciclos basicos de pwm y luego mide, corta por default en 3*pwm
 #endif
 
 //-------- Clock Frequency ------------------------------------
@@ -159,15 +165,37 @@ typedef enum Parts {
 #define TEMP_06 		1380		//1.05	medidos posta
 #define TEMP_04 		1430		//1.12	calculado
 #define TEMP_02 		1489		//1.2		calculado
+
+//para modo PWM en MINIBAR (respeta programa original)
+#define PWM_1BIP_ON				71
+#define PWM_1BIP_OFF				39
+#define PWM_1BIP_PERIOD			(PWM_1BIP_ON + PWM_1BIP_OFF)
+
+#define PWM_2BIPS_ON				77
+#define PWM_2BIPS_OFF			33
+#define PWM_2BIPS_PERIOD		(PWM_2BIPS_ON + PWM_2BIPS_OFF)
+
+#define PWM_3BIPS_ON				88
+#define PWM_3BIPS_OFF			22
+#define PWM_3BIPS_PERIOD		(PWM_3BIPS_ON + PWM_3BIPS_OFF)
+
+#define PWM_4BIPS_ON				93
+#define PWM_4BIPS_OFF			17
+#define PWM_4BIPS_PERIOD		(PWM_4BIPS_ON + PWM_4BIPS_OFF)
+
+#define PWM_5BIPS_ON				104
+#define PWM_5BIPS_OFF			6
+#define PWM_5BIPS_PERIOD		(PWM_5BIPS_ON + PWM_5BIPS_OFF)
+
 #endif
 
 #ifdef TB600
-#define TEMP_12 		515
-#define TEMP_10 		538
-#define TEMP_08 		563
-#define TEMP_06 		580
-#define TEMP_04 		603
-#define TEMP_02 		626
+#define TEMP_12 		582
+#define TEMP_10 		598
+#define TEMP_08 		613
+#define TEMP_06 		627		//no llego
+#define TEMP_04 		647
+#define TEMP_02 		667
 
 #define TEMP_12_SIN_MOTOR		583		//calculado
 #define TEMP_10_SIN_MOTOR		606		//medido
@@ -184,7 +212,9 @@ typedef enum Parts {
 #define TEMP_02_NTC_INTERNO	1440
 
 //para modo PWM en TB600
-#define PWM_STARTING				45
+// #define PWM_STARTING				45	//20-11-17
+#define PWM_STARTING				55		//6-12-17
+// #define PWM_STARTING				10		//7-12-17	pide metab para pruebas
 #define PWM_1BIP_ON				70
 // #define PWM_1BIP_ON				10
 #define PWM_1BIP_OFF				24

@@ -75,15 +75,6 @@ unsigned short AjustePuntas (unsigned short);
 
 
 //--- FILTROS DE SENSORES ---//
-#ifdef SOFT_2_0
-#define LARGO_FILTRO_POTE 16
-#define DIVISOR_POTE      4   //2 elevado al divisor = largo filtro
-#define LARGO_FILTRO_TEMP 32
-#define DIVISOR_TEMP      5   //2 elevado al divisor = largo filtro
-unsigned short vtemp [LARGO_FILTRO_TEMP + 1];
-unsigned short vpote [LARGO_FILTRO_POTE + 1];
-#endif
-
 #ifdef SOFT_2_1
 unsigned char index_pote = 0;
 unsigned char index_temp = 0;
@@ -99,10 +90,6 @@ unsigned short vpote [LARGO_FILTRO_POTE];
 const unsigned short vpote_ranges [] = {3510, 2925, 2340, 1755, 1170, 585, 0};
 //const unsigned short vtemp_ranges [] = {2000, 1337, 1224, 1100, 930, 819, 0};
 //const unsigned short vtemp_ranges [] = {1337, 713, 685, 657, 628, 600, 572};	//ajuste puntas 26-02
-#ifdef SIMPLE_VECTOR_TEMP
-//const unsigned short vtemp_ranges [] = {880, 816, 750, 687, 623, 559, 495};	//ajuste puntas 10-3-15 (mediciones 3-3-15)
-const unsigned short vtemp_ranges [] = {796, 769, 742, 715, 688, 661, 495};	//ajuste puntas 10-3-15 (mediciones 3-3-15)
-#endif
 
 
 
@@ -135,10 +122,6 @@ int main(void)
 	unsigned char bips_in_state = 0;
 	unsigned char last_pote_range = 0;
 #endif
-	#ifdef SOFT_2_0
-	unsigned char led_state = 0;
-	unsigned char blink = 0;
-	#endif
 
 #ifdef DATALOGGER
 	char s_to_send [100];
@@ -241,6 +224,24 @@ int main(void)
 //    	}
 //    }
 //    //para pruebas
+#ifdef HARD_1_0
+    //espero 3 segundos
+	 LED_ON;
+	 Wait_ms(300);
+	 LED_OFF;
+	 Wait_ms(700);
+
+	 LED_ON;
+	 Wait_ms(300);
+	 LED_OFF;
+	 Wait_ms(700);
+
+	 LED_ON;
+	 Wait_ms(300);
+	 LED_OFF;
+	 Wait_ms(700);
+#endif
+
 #ifdef HARD_2_0
     //3 segundos muestro sincro
     timer_relay = 3000;
@@ -304,10 +305,10 @@ int main(void)
 					temp_filter_ready = 0;
 					temp_filtered = MA32 (vtemp);
 
-#ifdef			MINIBAR
-					//Ajustar Temperaturas
-					temp_filtered = AjustePuntas (temp_filtered);
-#endif
+// #ifdef			MINIBAR
+// 					//Ajustar Temperaturas
+// 					temp_filtered = AjustePuntas (temp_filtered);
+// #endif
 
 #if (defined TEMP_BY_PWM_AND_SENSE)
 					if (Pote_Range != last_pote_range)
@@ -347,7 +348,6 @@ int main(void)
 								case B_INIT:
 									RelayOn();
 									bips_in_state = B_ENFRIANDO_PWM;
-									// bips_minutes_timeout = PWM_1BIP_ON;
 									bips_minutes_timeout = PWM_STARTING;
 									break;
 
@@ -356,7 +356,6 @@ int main(void)
 									{
 										RelayOn();
 										bips_in_state = B_ENFRIANDO_PWM;
-										// bips_minutes_timeout = PWM_1BIP_ON;
 										bips_minutes_timeout = PWM_STARTING;
 									}
 									break;
@@ -370,7 +369,8 @@ int main(void)
 									break;
 
 								case B_ENFRIANDO_SENSE:
-									if ((temp_filtered > TEMP_10)	|| (!bips_minutes_timeout)) //mide al reves menos temp mas tension
+									// if ((temp_filtered > TEMP_10)	|| (!bips_minutes_timeout)) //mide al reves menos temp mas tension
+									if (temp_filtered > TEMP_10) //mide al reves menos temp mas tension
 									{
 										RelayOff();
 										bips_in_state = B_CALENTANDO;
@@ -408,7 +408,6 @@ int main(void)
 								case B_INIT:
 									RelayOn();
 									bips_in_state = B_ENFRIANDO_PWM;
-									// bips_minutes_timeout = PWM_2BIPS_ON;
 									bips_minutes_timeout = PWM_STARTING;
 									break;
 
@@ -417,7 +416,6 @@ int main(void)
 									{
 										RelayOn();
 										bips_in_state = B_ENFRIANDO_PWM;
-										// bips_minutes_timeout = PWM_2BIPS_ON;
 										bips_minutes_timeout = PWM_STARTING;
 									}
 									break;
@@ -431,7 +429,8 @@ int main(void)
 									break;
 
 								case B_ENFRIANDO_SENSE:
-									if ((temp_filtered > TEMP_08)	|| (!bips_minutes_timeout)) //mide al reves menos temp mas tension
+									// if ((temp_filtered > TEMP_08)	|| (!bips_minutes_timeout)) //mide al reves menos temp mas tension
+									if (temp_filtered > TEMP_08) //mide al reves menos temp mas tension
 									{
 										RelayOff();
 										bips_in_state = B_CALENTANDO;
@@ -469,7 +468,6 @@ int main(void)
 								case B_INIT:
 									RelayOn();
 									bips_in_state = B_ENFRIANDO_PWM;
-									// bips_minutes_timeout = PWM_3BIPS_ON;
 									bips_minutes_timeout = PWM_STARTING;
 									break;
 
@@ -478,7 +476,6 @@ int main(void)
 									{
 										RelayOn();
 										bips_in_state = B_ENFRIANDO_PWM;
-										// bips_minutes_timeout = PWM_3BIPS_ON;
 										bips_minutes_timeout = PWM_STARTING;
 									}
 									break;
@@ -492,7 +489,8 @@ int main(void)
 									break;
 
 								case B_ENFRIANDO_SENSE:
-									if ((temp_filtered > TEMP_06)	|| (!bips_minutes_timeout)) //mide al reves menos temp mas tension
+									// if ((temp_filtered > TEMP_06)	|| (!bips_minutes_timeout)) //mide al reves menos temp mas tension
+									if (temp_filtered > TEMP_06) //mide al reves menos temp mas tension
 									{
 										RelayOff();
 										bips_in_state = B_CALENTANDO;
@@ -530,7 +528,6 @@ int main(void)
 								case B_INIT:
 									RelayOn();
 									bips_in_state = B_ENFRIANDO_PWM;
-									// bips_minutes_timeout = PWM_4BIPS_ON;
 									bips_minutes_timeout = PWM_STARTING;
 									break;
 
@@ -539,7 +536,6 @@ int main(void)
 									{
 										RelayOn();
 										bips_in_state = B_ENFRIANDO_PWM;
-										// bips_minutes_timeout = PWM_4BIPS_ON;
 										bips_minutes_timeout = PWM_STARTING;
 									}
 									break;
@@ -553,7 +549,8 @@ int main(void)
 									break;
 
 								case B_ENFRIANDO_SENSE:
-									if ((temp_filtered > TEMP_04)	|| (!bips_minutes_timeout)) //mide al reves menos temp mas tension
+									// if ((temp_filtered > TEMP_04)	|| (!bips_minutes_timeout)) //mide al reves menos temp mas tension
+									if (temp_filtered > TEMP_04) //mide al reves menos temp mas tension
 									{
 										RelayOff();
 										bips_in_state = B_CALENTANDO;
@@ -591,7 +588,6 @@ int main(void)
 								case B_INIT:
 									RelayOn();
 									bips_in_state = B_ENFRIANDO_PWM;
-									// bips_minutes_timeout = PWM_5BIPS_ON;
 									bips_minutes_timeout = PWM_STARTING;
 									break;
 
@@ -600,7 +596,6 @@ int main(void)
 									{
 										RelayOn();
 										bips_in_state = B_ENFRIANDO_PWM;
-										// bips_minutes_timeout = PWM_5BIPS_ON;
 										bips_minutes_timeout = PWM_STARTING;
 									}
 									break;
@@ -614,7 +609,8 @@ int main(void)
 									break;
 
 								case B_ENFRIANDO_SENSE:
-									if ((temp_filtered > TEMP_02)	|| (!bips_minutes_timeout)) //mide al reves menos temp mas tension
+									// if ((temp_filtered > TEMP_02)	|| (!bips_minutes_timeout)) //mide al reves menos temp mas tension
+									if (temp_filtered > TEMP_02) //mide al reves menos temp mas tension
 									{
 										RelayOff();
 										bips_in_state = B_CALENTANDO;
@@ -740,324 +736,6 @@ int main(void)
 //    	Wait_ms (10);
 //    }
 
-	//--- Main loop ---//
-#ifdef SOFT_2_0
-	while(1)
-	{
-		//PROGRAMA DE PRODUCCION
-		if (!take_sample_pote_timer)	//tomo muestras cada 10ms
-		{
-			take_sample_pote_timer = 10;
-			pote_filtered = Get_Pote();
-
-			//determino los rangos del pote
-			if (pote_filtered > vpote_ranges[0])
-				Pote_Range = SIX_BIPS;
-			else if (pote_filtered > vpote_ranges[1])
-				Pote_Range = FIVE_BIPS;
-			else if (pote_filtered > vpote_ranges[2])
-				Pote_Range = FOUR_BIPS;
-			else if (pote_filtered > vpote_ranges[3])
-				Pote_Range = THREE_BIPS;
-			else if (pote_filtered > vpote_ranges[4])
-				Pote_Range = TWO_BIPS;
-			else if (pote_filtered > vpote_ranges[5])
-				Pote_Range = ONE_BIP;
-			else
-				Pote_Range = ZERO_BIPS;
-		}
-
-		if (!take_sample_temp_timer)	//tomo muestras cada 100ms
-		{
-			take_sample_temp_timer = 10;
-			temp_filtered = Get_Temp();
-
-#ifdef SIMPLE_VECTOR_TEMP
-			//determino los rangos de temperatura
-			if (temp_filtered > vtemp_ranges[0])		//1337
-				Temp_Range = SIX_BIPS;
-			else if (temp_filtered > vtemp_ranges[1])	//713
-				Temp_Range = FIVE_BIPS;
-			else if (temp_filtered > vtemp_ranges[2])	//685
-				Temp_Range = FOUR_BIPS;
-			else if (temp_filtered > vtemp_ranges[3])	//657
-				Temp_Range = THREE_BIPS;
-			else if (temp_filtered > vtemp_ranges[4])	//628
-				Temp_Range = TWO_BIPS;
-			else if (temp_filtered > vtemp_ranges[5])	//600
-				Temp_Range = ONE_BIP;
-			else
-				Temp_Range = ZERO_BIPS;				//572
-#endif
-
-
-		}
-
-#ifdef RELAY_OFF_WITH_DOOR_OPEN
-		if (Door_Open())
-		{
-			RelayOff();
-			LED_OFF;
-			door_is_open = 1;
-			LIGHT_ON;
-		}
-		else
-		{
-			LIGHT_OFF;
-			door_is_open = 0;
-		}
-#else
-		if (Door_Open())
-		{
-			//LED_OFF;
-			LIGHT_ON;
-		}
-		else
-		{
-			LIGHT_OFF;
-		}
-#endif
-
-#ifdef RELAY_OFF_WITH_DOOR_OPEN
-		if (!door_is_open)
-		{
-#endif
-			switch (stop_state)
-			{
-				case NORMAL:
-					if (move_relay == 0)		//el RELE lo muevo cada 10 segundos
-					{
-						move_relay = 10;
-
-	#ifdef SIMPLE_VECTOR_TEMP
-						//Modificacion 10-3-15 pongo histeresis de 1 paso completo
-						if (Temp_Range >= Pote_Range)
-							RELAY_OFF;
-
-						if (Pote_Range > ZERO_BIPS)
-						{
-							if (Temp_Range < (Pote_Range - 1))
-								RELAY_ON;
-						}
-	#endif
-
-	#ifdef OPEN_LOOP
-						//Modificacion 23-5-15 pongo setpoint + hysteresis
-						switch (Pote_Range)
-						{
-							case SIX_BIPS:		//lo resuelvo en otra parte
-								break;
-
-							case FIVE_BIPS:
-								if (pwm_current_min < vpwm_ranges[FIVE_BIPS])
-									RelayOn();
-								else
-									RelayOff();
-
-								if (pwm_current_min >= PWM_MIN_MAX)
-								{
-									pwm_current_min = 0;
-								}
-								break;
-
-							case FOUR_BIPS:
-								if (pwm_current_min < vpwm_ranges[FOUR_BIPS])
-									RelayOn();
-								else
-									RelayOff();
-
-								if (pwm_current_min >= PWM_MIN_MAX)
-								{
-									pwm_current_min = 0;
-								}
-								break;
-
-							case THREE_BIPS:
-								if (pwm_current_min < vpwm_ranges[THREE_BIPS])
-									RelayOn();
-								else
-									RelayOff();
-
-								if (pwm_current_min >= PWM_MIN_MAX)
-								{
-									pwm_current_min = 0;
-								}
-								break;
-
-							case TWO_BIPS:
-								if (pwm_current_min < vpwm_ranges[TWO_BIPS])
-									RelayOn();
-								else
-									RelayOff();
-
-								if (pwm_current_min >= PWM_MIN_MAX)
-								{
-									pwm_current_min = 0;
-								}
-								break;
-
-							case ONE_BIP:
-								if (pwm_current_min < vpwm_ranges[ONE_BIP])
-									RelayOn();
-								else
-									RelayOff();
-
-								if (pwm_current_min >= PWM_MIN_MAX)
-								{
-									pwm_current_min = 0;
-								}
-								break;
-
-							case ZERO_BIPS:		//lo resuelvo en otra parte
-								break;
-						}
-	#endif //OPEN_LOOP
-					}	//end move_relay
-
-					if (minutes >= TT_MINUTES_DAY_ON)
-						stop_state = GO_TO_STOP;
-
-					//si se apago la heladera
-					if (Pote_Range == ZERO_BIPS)
-						stop_state = TO_NEVER;
-
-					//si se prende siempre
-					if (Pote_Range == SIX_BIPS)
-						stop_state = TO_ALWAYS;
-
-					break;
-
-				case GO_TO_STOP:
-					//tengo que apagar el rele durante 25 minutos
-					minutes = 0;
-					RelayOff();
-					stop_state = STOPPED;
-					break;
-
-				case STOPPED:
-					if (minutes >= TT_MINUTES_DAY_OFF)
-					{
-						stop_state = NORMAL;
-						minutes = 0;
-						pwm_current_min = 0;
-					}
-					break;
-
-				case TO_NEVER:
-					//apago el motor
-					RelayOff();
-					stop_state = NEVER;
-					break;
-
-				case NEVER:
-					//mantengo motor apagado mientras este en NEVER
-//					if (RELAY)
-//						RelayOff();
-
-					if (Pote_Range != ZERO_BIPS)
-					{
-						minutes = 0;
-						stop_state = NORMAL;
-						pwm_current_min = 0;
-					}
-					break;
-
-				case TO_ALWAYS:
-					RelayOn();
-					stop_state = ALWAYS;
-					break;
-
-				case ALWAYS:
-					if (Pote_Range != SIX_BIPS)
-					{
-						stop_state = NORMAL;
-					}
-
-#ifdef RELAY_OFF_WITH_DOOR_OPEN
-					if (!RelayIsOn())		//agregado pos si abren la puerta
-						RelayOn();
-#endif
-
-					if (minutes >= TT_MINUTES_DAY_ON)
-						stop_state = GO_TO_STOP;
-
-					break;
-
-				default:
-					stop_state = NORMAL;
-					break;
-			}
-#ifdef RELAY_OFF_WITH_DOOR_OPEN
-		}
-#endif
-
-#ifdef RELAY_OFF_WITH_DOOR_OPEN
-		if (!door_is_open)
-		{
-#endif
-			switch (led_state)
-			{
-				case START_BLINKING:
-					blink = (unsigned char) Pote_Range;
-
-					if (blink)
-					{
-						LED_ON;
-						led_timer = 200;
-						led_state++;
-						blink--;
-					}
-					break;
-
-				case WAIT_TO_OFF:
-					if (!led_timer)
-					{
-						LED_OFF;
-						led_timer = 200;
-						led_state++;
-					}
-					break;
-
-				case WAIT_TO_ON:
-					if (!led_timer)
-					{
-						if (blink)
-						{
-							blink--;
-							led_timer = 200;
-							led_state = WAIT_TO_OFF;
-							LED_ON;
-						}
-						else
-						{
-							led_state = WAIT_NEW_CYCLE;
-							led_timer = 2000;
-						}
-					}
-					break;
-
-				case WAIT_NEW_CYCLE:
-					if (!led_timer)
-					{
-						led_state = START_BLINKING;
-					}
-					break;
-
-
-				default:
-					led_state = START_BLINKING;
-					break;
-			}
-#ifdef RELAY_OFF_WITH_DOOR_OPEN
-		}
-#endif
-		//Cuestiones generales
-#ifdef HARD_2_0
-		UpdateRelay();
-#endif
-
-	}	//End of while (1)
-#endif	//SOFT_2_0
 	return 0;
 }
 //--- End of file ---//
